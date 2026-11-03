@@ -1,4 +1,1 @@
-fastapi
-uvicorn
-pydantic
-
+flask==3.0.3
