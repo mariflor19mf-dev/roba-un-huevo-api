@@ -6,7 +6,7 @@ local Players = game:GetService("Players")
 local Workspace = game:GetService("Workspace")
 
 -- URL oficial vinculada directamente a tu API real de Render
-local RENDER_URL = https://roba-un-huevo-api.onrender.com
+local RENDER_URL = "https://onrender.com"
 
 -- Selector de protocolo HTTP especializado para entornos móviles/emuladores
 local enviarHttp = (fluxus and fluxus.request) or request or http_request
