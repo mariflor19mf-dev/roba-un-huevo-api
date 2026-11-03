@@ -1,50 +1,60 @@
-from fastapi import FastAPI, HTTPException
-from pydantic import BaseModel
-from typing import List
+from flask import Flask, request, jsonify
+import time
 
-app = FastAPI(
-    title="Roba un Huevo - Central Bot Hub",
-    description="Servidor central receptor de datos enviados por bots escaneadores.",
-    version="4.1.0"
-)
+app = Flask(__name__)
 
-# Base de datos temporal en memoria
+# Base de datos temporal en memoria para almacenar los servidores escaneados
 servidores_db = {}
 
-# Modelo de datos para validar la información
-class ServidorInfo(BaseModel):
-    job_id: str
-    jugadores: str = "0/0"
-    produccion: str = "Desconocida"
-    ultima_actualizacion: str = "Justo ahora"
-
-@app.get("/")
+@app.route('/')
 def home():
-    """Verificación de estado de la API"""
-    return {
+    return jsonify({
         "status": "online",
         "message": "API de Roba un Huevo Finder V4 activa."
-    }
+    })
 
-@app.get("/obtener_servidores", response_model=List[ServidorInfo])
-def obtener_servidores_lista():
-    """Ruta limpia de tipo GET para que tu interfaz de usuario lea la lista"""
-    lista = []
-    for j_id, info in servidores_db.items():
-        lista.append(ServidorInfo(
-            job_id=j_id,
-            jugadores=info["jugadores"],
-            produccion=info["produccion"],
-            ultima_actualizacion=info["ultima_actualizacion"]
-        ))
-    return lista
+# ========================================================
+# ENDPOINT CORREGIDO: Recibe los datos del Bot desde Delta
+# ========================================================
+@app.route('/actualizar_servidor', methods=['GET', 'POST'])  # <-- El FIX: Se agrega 'POST' explícitamente
+def actualizar_servidor():
+    if request.method == 'POST':
+        try:
+            data = request.get_json()
+            if not data:
+                return jsonify({"error": "No data provided"}), 400
+            
+            server_id = data.get('serverId')
+            if not server_id:
+                return jsonify({"error": "Missing serverId"}), 400
+                
+            # Guardar o actualizar la información en la base de datos temporal
+            servidores_db[server_id] = {
+                "serverId": server_id,
+                "playerCount": data.get('playerCount', 0),
+                "eggCount": data.get('eggCount', 0),
+                "specialEggs": data.get('specialEggs', 0),
+                "timestamp": data.get('timestamp', time.time())
+            }
+            return jsonify({"status": "success", "message": "Servidor actualizado"}), 200
+        except Exception as e:
+            return jsonify({"error": str(e)}), 500
+            
+    # Si entras desde el navegador de forma normal (Petición GET)
+    return jsonify({"message": "Este endpoint recibe datos mediante POST desde el bot."}), 200
 
-@app.post("/actualizar_servidores")
-def registrar_o_actualizar_servidor(data: ServidorInfo):
-    """Ruta de tipo POST para que los BOTS de la nube guarden los datos"""
-    servidores_db[data.job_id] = {
-        "jugadores": data.jugadores,
-        "produccion": data.produccion,
-        "ultima_actualizacion": data.ultima_actualizacion
-    }
-    return {"message": f"Servidor {data.job_id} registrado con éxito."}
+# ========================================================
+# ENDPOINT: Envía la lista de servidores a tu panel Tkinter
+# ========================================================
+@app.route('/obtener_servidores', methods=['GET'])
+def obtener_servidores():
+    # Limpiar servidores inactivos (viejos de más de 3 minutos) por seguridad
+    tiempo_actual = time.time()
+    servidores_activos = [
+        sv for sv in servidores_db.values() 
+        if tiempo_actual - sv.get('timestamp', 0) < 180
+    ]
+    return jsonify(servidores_activos), 200
+
+if __name__ == '__main__':
+    app.run(host='0.0.0.0', port=10000)
