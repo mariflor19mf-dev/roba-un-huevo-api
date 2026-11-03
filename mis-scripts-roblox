@@ -1,0 +1,85 @@
+-- ========================================================
+-- SCRIPT EXTRACTOR CLOUD V4 - COMPATIBLE CON DELTA ANDROID
+-- ========================================================
+local HttpService = game:GetService("HttpService")
+local Players = game:GetService("Players")
+local Workspace = game:GetService("Workspace")
+
+-- URL oficial de tu servidor en Render
+local RENDER_URL = "https://onrender.com" 
+
+-- Selector de protocolo HTTP especializado para entornos móviles/emuladores
+local enviarHttp = (fluxus and fluxus.request) or request or http_request
+
+if not enviarHttp then
+    warn("[ERROR CRÍTICO] Este inyector no soporta solicitudes de transmisión de red.")
+    return
+end
+
+print("[SISTEMA] Conexión establecida. Iniciando transmisión hacia Render...")
+
+local function recolectarYEnviarDatos()
+    local ID_Servidor = game.JobId
+    local cantidadJugadores = #Players:GetPlayers()
+    
+    local conteoHuevos = 0
+    local huevosEspeciales = 0
+    
+    -- Mapeo seguro del Workspace para contar la producción en tiempo real
+    local contenedor = Workspace:FindFirstChild("Eggs") or Workspace:FindFirstChild("DroppedEggs")
+    if contenedor then
+        for _, objeto in pairs(contenedor:GetChildren()) do
+            conteoHuevos = conteoHuevos + 1
+            local nombreHuevo = objeto.Name:lower()
+            -- Filtro de rarezas (incluye el nuevo Huevo de Medusa Secreto)
+            if nombreHuevo:find("rare") or nombreHuevo:find("legendary") or nombreHuevo:find("special") or nombreHuevo:find("secreto") or nombreHuevo:find("medusa") then
+                huevosEspeciales = huevosEspeciales + 1
+            end
+        end
+    else
+        -- Escaneo alternativo en caso de actualización de rutas del mapa
+        local alternativo = Workspace:FindFirstChild("EggFolder") or Workspace:FindFirstChild("Spawns")
+        if alternativo then
+            conteoHuevos = #alternativo:GetChildren()
+        end
+    end
+    
+    -- Empaquetado de la estructura de datos en formato JSON
+    local datosMapa = {
+        serverId = ID_Servidor,
+        playerCount = cantidadJugadores,
+        eggCount = conteoHuevos,
+        specialEggs = huevosEspeciales,
+        timestamp = os.time()
+    }
+    
+    local okJson, jsonFinal = pcall(function()
+        return HttpService:JSONEncode(datosMapa)
+    end)
+    
+    if not okJson then return end
+    
+    -- Transmisión de datos protegida mediante el túnel del emulador
+    local exitoEnvio, respuesta = pcall(function()
+        return enviarHttp({
+            Url = RENDER_URL,
+            Method = "POST",
+            Headers = { 
+                ["Content-Type"] = "application/json" 
+            },
+            Body = jsonFinal
+        })
+    end)
+    
+    if exitoEnvio and respuesta then
+        print("[OK NUBE] Servidor registrado correctamente en Render. Código de Estado:", respuesta.StatusCode)
+    else
+        warn("[ALERTA NUBE] Error de comunicación local en el emulador MuMu Player.")
+    end
+end
+
+-- Bucle persistente de rastreo y envío automático cada 12 segundos
+while true do
+    recolectarYEnviarDatos()
+    task.wait(12)
+end
