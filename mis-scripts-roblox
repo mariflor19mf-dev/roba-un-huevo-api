@@ -5,7 +5,7 @@ local HttpService = game:GetService("HttpService")
 local Players = game:GetService("Players")
 local Workspace = game:GetService("Workspace")
 
--- URL oficial corregida y enrutada hacia tu API real en Render
+-- URL oficial vinculada directamente a tu API real de Render
 local RENDER_URL = "https://onrender.com" 
 
 -- Selector de protocolo HTTP especializado para entornos móviles/emuladores
