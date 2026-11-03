@@ -5,7 +5,7 @@ local HttpService = game:GetService("HttpService")
 local Players = game:GetService("Players")
 local Workspace = game:GetService("Workspace")
 
--- URL oficial de tu servidor en Render
+-- URL oficial configurada con tu servidor en Render
 local RENDER_URL = "https://onrender.com" 
 
 -- Selector de protocolo HTTP especializado para entornos móviles/emuladores
@@ -74,7 +74,7 @@ local function recolectarYEnviarDatos()
     if exitoEnvio and respuesta then
         print("[OK NUBE] Servidor registrado correctamente en Render. Código de Estado:", respuesta.StatusCode)
     else
-        warn("[ALERTA NUBE] Error de comunicación local en el emulador MuMu Player.")
+        warn("[ALERTA NUBE] Error de comunicación local en el emulador MuMu Player o servidor inaccesible.")
     end
 end
 
