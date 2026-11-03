@@ -8,7 +8,7 @@ local Workspace = game:GetService("Workspace")
 -- URL oficial vinculada directamente a tu API real de Render
 local RENDER_URL = "https://onrender.com"
 
--- Selector de protocolo HTTP especializado para entornos móviles/emuladores
+-- SELECTOR FORZADO DE PROTOCOLO: Forzar compatibilidad con emulador MuMu
 local enviarHttp = (fluxus and fluxus.request) or request or http_request
 
 if not enviarHttp then
@@ -16,7 +16,7 @@ if not enviarHttp then
     return
 end
 
-print("[SISTEMA] Conexión establecida. Iniciando transmisión hacia Render...")
+print("[SISTEMA] Iniciando transmisión protegida hacia Render...")
 
 local function recolectarYEnviarDatos()
     local ID_Servidor = game.JobId
@@ -31,20 +31,17 @@ local function recolectarYEnviarDatos()
         for _, objeto in pairs(contenedor:GetChildren()) do
             conteoHuevos = conteoHuevos + 1
             local nombreHuevo = objeto.Name:lower()
-            -- Filtro de rarezas (incluye el nuevo Huevo de Medusa Secreto)
             if nombreHuevo:find("rare") or nombreHuevo:find("legendary") or nombreHuevo:find("special") or nombreHuevo:find("secreto") or nombreHuevo:find("medusa") then
                 huevosEspeciales = huevosEspeciales + 1
             end
         end
     else
-        -- Escaneo alternativo en caso de actualización de rutas del mapa
         local alternativo = Workspace:FindFirstChild("EggFolder") or Workspace:FindFirstChild("Spawns")
         if alternativo then
             conteoHuevos = #alternativo:GetChildren()
         end
     end
     
-    -- Empaquetado de la estructura de datos en formato JSON
     local datosMapa = {
         serverId = ID_Servidor,
         playerCount = cantidadJugadores,
@@ -59,13 +56,14 @@ local function recolectarYEnviarDatos()
     
     if not okJson then return end
     
-    -- Transmisión de datos protegida mediante el túnel del emulador
+    -- Intento de transmisión con manejo de excepciones para entornos NAT aislados
     local exitoEnvio, respuesta = pcall(function()
         return enviarHttp({
             Url = RENDER_URL,
             Method = "POST",
             Headers = { 
-                ["Content-Type"] = "application/json" 
+                ["Content-Type"] = "application/json",
+                ["User-Agent"] = "Mozilla/5.0 (Android; Mobile)" -- Emular navegador móvil legítimo
             },
             Body = jsonFinal
         })
@@ -74,7 +72,8 @@ local function recolectarYEnviarDatos()
     if exitoEnvio and respuesta then
         print("[OK NUBE] Servidor registrado correctamente en Render. Código de Estado:", respuesta.StatusCode)
     else
-        warn("[ALERTA NUBE] Error de comunicación local en el emulador MuMu Player.")
+        -- Alerta silenciosa para evitar colapsar la consola si la red local del emulador está bloqueada
+        warn("[ALERTA] Reintentando conexión de red en el próximo ciclo...")
     end
 end
 
